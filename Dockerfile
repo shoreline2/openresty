@@ -1,5 +1,6 @@
 # https://github.com/nginxinc/nginx-otel
-FROM openresty/openresty:1.27.1.2-2-bullseye-fat AS builder
+ARG OPENRESTY_TAG=1.27.1.2-2-bookworm-fat
+FROM openresty/openresty:${OPENRESTY_TAG} AS builder
 RUN apt update && \
     apt upgrade -y && \
     apt install -y cmake build-essential libssl-dev zlib1g-dev libpcre3-dev pkg-config libc-ares-dev libre2-dev git && \
@@ -14,7 +15,7 @@ RUN git clone https://github.com/nginxinc/nginx-otel.git && \
     cd build && \
     cmake -DNGX_OTEL_NGINX_BUILD_DIR=/nginx/objs .. && \
     make
-FROM openresty/openresty:1.27.1.2-2-bullseye-fat AS runner
+FROM openresty/openresty:${OPENRESTY_TAG} AS runner
 RUN mkdir /usr/local/openresty/nginx/modules && \
     apt update && \
     apt upgrade -y && \
