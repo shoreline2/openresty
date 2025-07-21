@@ -1,0 +1,7 @@
+services:
+  openresty:
+    build: .
+    ports:
+      - '80:80'
+    volumes:
+      - './nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf'
