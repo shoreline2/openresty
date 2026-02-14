@@ -27,6 +27,7 @@ RUN curl -fSL https://openresty.org/download/openresty-${OPENRESTY_VERSION}.tar.
   git clone --depth 1 https://github.com/nginxinc/nginx-otel.git /src/nginx-otel
 WORKDIR /src/openresty-${OPENRESTY_VERSION}
 RUN ./configure -j$(nproc) \
+  --with-debug \
   --with-pcre-jit \
   --with-ipv6 \
   --with-threads \
