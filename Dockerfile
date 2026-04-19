@@ -24,7 +24,8 @@ WORKDIR /src
 RUN curl -fSL https://openresty.org/download/openresty-${OPENRESTY_VERSION}.tar.gz -o openresty.tar.gz && \
   tar -zxvf openresty.tar.gz && \
   git clone --depth 1 --branch ${NJS_VERSION} https://github.com/nginx/njs.git /src/njs && \
-  git clone --depth 1 https://github.com/nginxinc/nginx-otel.git /src/nginx-otel
+  git clone --depth 1 https://github.com/nginxinc/nginx-otel.git /src/nginx-otel && \
+  git clone --depth 1 https://github.com/vozlt/nginx-module-vts.git /src/nginx-module-vts
 WORKDIR /src/openresty-${OPENRESTY_VERSION}
 RUN ./configure -j$(nproc) \
   --with-debug \
@@ -45,7 +46,8 @@ RUN ./configure -j$(nproc) \
   --with-stream_ssl_module \
   --with-stream_ssl_preread_module \
   --add-dynamic-module=/src/njs/nginx \
-  --add-dynamic-module=/src/nginx-otel
+  --add-dynamic-module=/src/nginx-otel \
+  --add-module=/src/nginx-module-vts
 WORKDIR /src/nginx-otel/build
 RUN cmake -DNGX_OTEL_NGINX_BUILD_DIR=/src/openresty-${OPENRESTY_VERSION}/build/nginx-1.27.1/objs .. && \
   make -j$(nproc)

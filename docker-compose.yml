@@ -2,7 +2,7 @@ services:
   openresty:
     build: .
     ports:
-      - '80:80'
+      - '8080:80'
     volumes:
       - './nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf'
       - './http.js:/usr/local/openresty/nginx/conf/http.js'
