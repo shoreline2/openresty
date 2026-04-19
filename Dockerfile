@@ -20,13 +20,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libre2-dev \
   libxslt1-dev \
   && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /src
+# Download OpenResty and clone required modules
 RUN curl -fSL https://openresty.org/download/openresty-${OPENRESTY_VERSION}.tar.gz -o openresty.tar.gz && \
   tar -zxvf openresty.tar.gz && \
   git clone --depth 1 --branch ${NJS_VERSION} https://github.com/nginx/njs.git /src/njs && \
   git clone --depth 1 https://github.com/nginxinc/nginx-otel.git /src/nginx-otel && \
   git clone --depth 1 https://github.com/vozlt/nginx-module-vts.git /src/nginx-module-vts
+
 WORKDIR /src/openresty-${OPENRESTY_VERSION}
+# Configure OpenResty with desired modules and dynamic module support
 RUN ./configure -j$(nproc) \
   --with-debug \
   --with-pcre-jit \
@@ -48,14 +52,28 @@ RUN ./configure -j$(nproc) \
   --add-dynamic-module=/src/njs/nginx \
   --add-dynamic-module=/src/nginx-otel \
   --add-module=/src/nginx-module-vts
+
+# Compile and install OpenResty
+# Compile OpenResty first to generate the NGINX object files required by the OTel build system.
+RUN make -j$(nproc)
+RUN make install
+
+# Build the OTEL module
 WORKDIR /src/nginx-otel/build
-RUN cmake -DNGX_OTEL_NGINX_BUILD_DIR=/src/openresty-${OPENRESTY_VERSION}/build/nginx-1.27.1/objs .. && \
-  make -j$(nproc)
-WORKDIR /src/openresty-${OPENRESTY_VERSION}
-RUN make -j$(nproc) && make install && \
-  cp /src/nginx-otel/build/ngx_otel_module.so /usr/local/openresty/nginx/modules/
+
+# Generate the build system files using CMake
+# Pass the path to the NGINX binary objects created during the OpenResty build phase
+# This ensures OTel module is compiled with matching binary compatibility
+RUN cmake -DNGX_OTEL_NGINX_BUILD_DIR=/src/openresty-${OPENRESTY_VERSION}/build/nginx-1.27.1/objs ..
+
+# Compile the OTEL module
+RUN make -j$(nproc)
+
+# Copy OTEL module into OpenResty
+RUN cp /src/nginx-otel/build/ngx_otel_module.so /usr/local/openresty/nginx/modules/
 
 FROM debian:${DEBIAN_RELEASE}
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
   curl \
   wget \
@@ -65,8 +83,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libxslt1.1 \
   libc-ares2 \
   && rm -rf /var/lib/apt/lists/*
+
+# Copy the compiled OpenResty directory from the builder stage
 COPY --from=builder /usr/local/openresty /usr/local/openresty
+
+# Set up environment paths
 ENV PATH="/usr/local/openresty/bin:/usr/local/openresty/nginx/sbin:${PATH}"
+
+# Forward NGINX logs to Docker log collector
 RUN ln -sf /dev/stdout /usr/local/openresty/nginx/logs/access.log \
   && ln -sf /dev/stderr /usr/local/openresty/nginx/logs/error.log
+
 CMD ["openresty", "-g", "daemon off;"]
