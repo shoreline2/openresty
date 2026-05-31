@@ -1,10 +1,12 @@
-ARG OPENRESTY_VERSION=1.29.2.3
+ARG OPENRESTY_VERSION=1.29.2.5
 ARG NJS_VERSION=0.9.6
-ARG DEBIAN_RELEASE=trixie-slim
+ARG DEBIAN_RELEASE=13.5-slim
 
 FROM debian:${DEBIAN_RELEASE} AS builder
+
 ARG OPENRESTY_VERSION
 ARG NJS_VERSION
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   ca-certificates \
@@ -64,7 +66,8 @@ WORKDIR /src/nginx-otel/build
 # Generate the build system files using CMake
 # Pass the path to the NGINX binary objects created during the OpenResty build phase
 # This ensures OTel module is compiled with matching binary compatibility
-RUN cmake -DNGX_OTEL_NGINX_BUILD_DIR=/src/openresty-${OPENRESTY_VERSION}/build/nginx-1.29.2/objs ..
+RUN NGX_BUILD_DIR=$(find /src/openresty-${OPENRESTY_VERSION}/build -name "nginx-*" -type d)/objs && \
+    cmake -DNGX_OTEL_NGINX_BUILD_DIR=${NGX_BUILD_DIR} ..
 
 # Compile the OTEL module
 RUN make -j$(nproc)
@@ -94,4 +97,5 @@ ENV PATH="/usr/local/openresty/bin:/usr/local/openresty/nginx/sbin:${PATH}"
 RUN ln -sf /dev/stdout /usr/local/openresty/nginx/logs/access.log \
   && ln -sf /dev/stderr /usr/local/openresty/nginx/logs/error.log
 
+STOPSIGNAL SIGQUIT
 CMD ["openresty", "-g", "daemon off;"]
