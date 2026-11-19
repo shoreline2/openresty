@@ -17,6 +17,19 @@ To verify the nginx version in a built image:
 docker compose run --rm openresty openresty -V
 ```
 
+## Smoke tests
+
+[pytest](https://docs.pytest.org/) tests in `tests/` build the image and check that OpenResty, LuaJIT,
+njs, OTel, VTS and XSLT are built and work with this repo's `nginx.conf` and `http.js`.
+
+Prerequisites: Docker and Python 3 with `venv` (on Debian/Ubuntu: `sudo apt install python3-venv`).
+
+```
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-test.txt
+.venv/bin/python -m pytest -v
+```
+
 ## Local testing
 
 1. Prerequisites:

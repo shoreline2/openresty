@@ -1,0 +1,5 @@
+# The Dockerfile downloads all its sources, so keep local files out of the build context.
+.git
+.venv
+.pytest_cache
+tests
