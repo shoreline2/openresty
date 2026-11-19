@@ -4,6 +4,9 @@ ARG OPENRESTY_SOURCE=git
 # Upstream master commit with nginx core 1.31.9 (includes the nginx 1.31.9 security fixes).
 ARG OPENRESTY_GIT_REF=0b91f30b31a9c711ff763f63807ae95d2fe2ceed
 ARG NJS_VERSION=1.0.1
+# Commits, not tags: the latest tags are far behind master and miss fixes.
+ARG NGINX_OTEL_REF=e3b6c98b1556e4c82cec39acc7be91a62449fa84
+ARG NGINX_VTS_REF=3b9235819e4a8bdadd30fbb70434b07d20c33248
 ARG DEBIAN_RELEASE=13.5-slim
 
 # OpenResty source option 1: build the tarball from a pinned upstream commit
@@ -54,6 +57,8 @@ FROM debian:${DEBIAN_RELEASE} AS builder
 
 ARG OPENRESTY_VERSION
 ARG NJS_VERSION
+ARG NGINX_OTEL_REF
+ARG NGINX_VTS_REF
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
@@ -76,8 +81,10 @@ WORKDIR /src
 COPY --from=src /openresty.tar.gz openresty.tar.gz
 RUN tar -zxf openresty.tar.gz && \
   git clone --depth 1 --branch ${NJS_VERSION} https://github.com/nginx/njs.git /src/njs && \
-  git clone --depth 1 https://github.com/nginxinc/nginx-otel.git /src/nginx-otel && \
-  git clone --depth 1 https://github.com/vozlt/nginx-module-vts.git /src/nginx-module-vts
+  git clone https://github.com/nginxinc/nginx-otel.git /src/nginx-otel && \
+  git -C /src/nginx-otel checkout ${NGINX_OTEL_REF} && \
+  git clone https://github.com/vozlt/nginx-module-vts.git /src/nginx-module-vts && \
+  git -C /src/nginx-module-vts checkout ${NGINX_VTS_REF}
 
 WORKDIR /src/openresty-${OPENRESTY_VERSION}
 # Configure OpenResty with desired modules and dynamic module support
