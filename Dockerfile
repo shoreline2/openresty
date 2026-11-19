@@ -1,6 +1,54 @@
-ARG OPENRESTY_VERSION=1.31.1.1
+ARG OPENRESTY_VERSION=1.31.9.1
+# OpenResty source: git = build from pinned upstream commit (unreleased fixes), release = official openresty.org tarball
+ARG OPENRESTY_SOURCE=git
+# Upstream master commit with nginx core 1.31.9 (includes the nginx 1.31.9 security fixes).
+ARG OPENRESTY_GIT_REF=0b91f30b31a9c711ff763f63807ae95d2fe2ceed
 ARG NJS_VERSION=1.0.1
 ARG DEBIAN_RELEASE=13.5-slim
+
+# OpenResty source option 1: build the tarball from a pinned upstream commit
+FROM debian:${DEBIAN_RELEASE} AS src-git
+
+ARG OPENRESTY_VERSION
+ARG OPENRESTY_GIT_REF
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  ca-certificates \
+  curl \
+  dos2unix \
+  git \
+  gzip \
+  make \
+  patch \
+  perl \
+  tar \
+  wget \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /openresty
+# Fails if OPENRESTY_VERSION doesn't match the version at OPENRESTY_GIT_REF.
+RUN git init -q && \
+  git remote add origin https://github.com/openresty/openresty.git && \
+  git fetch -q --depth 1 origin ${OPENRESTY_GIT_REF} && \
+  git checkout -q FETCH_HEAD && \
+  test "$(./util/ver)" = "${OPENRESTY_VERSION}" && \
+  make && \
+  mv openresty-${OPENRESTY_VERSION}.tar.gz /openresty.tar.gz
+
+# OpenResty source option 2: official release tarball
+FROM debian:${DEBIAN_RELEASE} AS src-release
+
+ARG OPENRESTY_VERSION
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  ca-certificates \
+  curl \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fSL https://openresty.org/download/openresty-${OPENRESTY_VERSION}.tar.gz -o /openresty.tar.gz
+
+# Select the source stage
+FROM src-${OPENRESTY_SOURCE} AS src
 
 FROM debian:${DEBIAN_RELEASE} AS builder
 
@@ -24,9 +72,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
-# Download OpenResty and clone required modules
-RUN curl -fSL https://openresty.org/download/openresty-${OPENRESTY_VERSION}.tar.gz -o openresty.tar.gz && \
-  tar -zxvf openresty.tar.gz && \
+# Unpack the OpenResty source from the selected stage and clone required modules
+COPY --from=src /openresty.tar.gz openresty.tar.gz
+RUN tar -zxf openresty.tar.gz && \
   git clone --depth 1 --branch ${NJS_VERSION} https://github.com/nginx/njs.git /src/njs && \
   git clone --depth 1 https://github.com/nginxinc/nginx-otel.git /src/nginx-otel && \
   git clone --depth 1 https://github.com/vozlt/nginx-module-vts.git /src/nginx-module-vts

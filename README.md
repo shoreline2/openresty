@@ -2,6 +2,21 @@
 
 The purpose of this repository is to add the Nginx OTEL module to an Openresty Docker image.
 
+## OpenResty source
+
+The Dockerfile can get the OpenResty source tarball in two ways, chosen with the `OPENRESTY_SOURCE` build arg:
+
+- `git` (current default): builds the tarball from a pinned commit (`OPENRESTY_GIT_REF`) of
+  [openresty/openresty](https://github.com/openresty/openresty) by running its `make` (`util/mirror-tarballs`).
+  Use this when nginx security fixes are on OpenResty's master branch but not yet in an official release.
+  `OPENRESTY_VERSION` must match `util/ver` at that commit, or the build fails.
+- `release`: downloads the official `openresty-${OPENRESTY_VERSION}.tar.gz` from openresty.org.
+
+To verify the nginx version in a built image:
+```
+docker compose run --rm openresty openresty -V
+```
+
 ## Local testing
 
 1. Prerequisites:
